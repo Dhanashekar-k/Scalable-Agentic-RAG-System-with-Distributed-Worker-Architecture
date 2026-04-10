@@ -1,1 +1,1 @@
-# Scalable-Agentic-RAG-System-with-Distributed-Worker-Architecture
+# Scalable Agentic RAG System with Distributed Worker Architecture
