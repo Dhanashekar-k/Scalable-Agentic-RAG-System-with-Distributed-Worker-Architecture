@@ -1,0 +1,358 @@
+version: '3.8'
+
+# Docker Compose Configuration - Kubernetes Alternative
+# ✅ All services tested and working in both Docker Compose & Kubernetes
+# For production: Use Kubernetes (k8s/) instead
+# For local dev: Use Docker Compose (this file)
+
+services:
+  # ==========================================
+  # Backend API Service (1 replica, stateless)
+  # ==========================================
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: niyanta_backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Application
+      APP_NAME: "Agentic RAG System"
+      DEBUG: "false"
+      
+      # API Keys
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      
+      # Database connections
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_QUEUE: agent_step_queue
+      
+      # Embedding
+      EMBEDDING_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+      EMBEDDING_DIMENSION: "384"
+      
+      # RAG Config
+      RETRIEVAL_TOP_K: "5"
+      HYBRID_SEARCH_ENABLED: "true"
+      CACHE_SIMILARITY_THRESHOLD: "0.85"
+      CACHE_TTL_SECONDS: "3600"
+      
+      # Agentic Config
+      MAX_AGENT_STEPS: "5"
+      MAX_REPLANS: "1"
+      MAX_STEP_RETRIES: "2"
+      AGENT_TIMEOUT_SECONDS: "120"
+      COMPLEXITY_THRESHOLD: "0.6"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================
+  # Worker Services (Distributed Processing)
+  # Horizontally scalable: docker-compose up -d --scale worker=7
+  # Status: ✅ Tested with 3-10 replicas
+  # ==========================================
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.worker
+    # No container_name - enables auto-scaling with unique hostname
+    environment:
+      # API Keys
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      
+      # Database connections
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_QUEUE: agent_step_queue
+      
+      # Embedding
+      EMBEDDING_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+      EMBEDDING_DIMENSION: "384"
+      
+      # RAG Config
+      RETRIEVAL_TOP_K: "5"
+      HYBRID_SEARCH_ENABLED: "true"
+      
+      # Agentic Config
+      MAX_AGENT_STEPS: "5"
+      MAX_REPLANS: "1"
+      MAX_STEP_RETRIES: "2"
+      AGENT_TIMEOUT_SECONDS: "120"
+      
+      # Worker ID auto-generated from container hostname if not set
+      WORKER_PREFETCH_COUNT: "1"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend-network
+    deploy:
+      replicas: 3  # Default, can scale: docker-compose up --scale worker=7
+
+
+
+  # ==========================================
+  # Redis (In-Memory Cache & State Storage)
+  # Status: ✅ Running, healthy
+  # Purpose: Store step results, semantic cache
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: niyanta_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ==========================================
+  # RabbitMQ (Message Queue & Task Distribution)
+  # Status: ✅ Running, healthy
+  # Purpose: Distribute steps to workers (prefetch_count=1 for fair load)
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: niyanta_rabbitmq
+    ports:
+      - "5672:5672"   # AMQP Protocol
+      - "15672:15672" # Management UI (guest/guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ==========================================
+  # Neo4j (Graph Database) - OPTIONAL
+  # Status: ⚠️ Removed from Kubernetes (mount issues)
+  # Uncomment below if using local development with Neo4j
+  # For production: Skip or use managed Neo4j service
+  # ==========================================
+  # neo4j:
+  #   image: neo4j:5.15-community
+  #   container_name: niyanta_neo4j
+  #   ports:
+  #     - "7474:7474" # HTTP
+  #     - "7687:7687" # Bolt
+  #   environment:
+  #     NEO4J_AUTH: neo4j/YOUR_NEO4J_PASSWORD  # Use .env file value
+  #     NEO4J_PLUGINS: '["apoc"]'
+  #     NEO4J_dbms_security_procedures_unrestricted: apoc.*
+  #   volumes:
+  #     - neo4j-data:/data
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend-network
+
+  # ==========================================
+  # ChromaDB (Vector Database) - OPTIONAL
+  # Status: ⚠️ Removed from Kubernetes (not critical path)
+  # Uncomment below if using vector embeddings in development
+  # For production: Use Kubernetes deployment or managed service
+  # ==========================================
+  # chromadb:
+  #   image: chromadb/chroma:latest
+  #   container_name: niyanta_chromadb
+  #   ports:
+  #     - "8001:8000"
+  #   environment:
+  #     IS_PERSISTENT: "TRUE"
+  #     ANONYMIZED_TELEMETRY: "FALSE"
+  #   volumes:
+  #     - chromadb-data:/chroma/chroma
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend-network
+
+  # ==========================================
+  # Prometheus (Metrics Collection)
+  # Status: ✅ Observability
+  # Purpose: Scrape metrics from backend, workers, Redis, RabbitMQ
+  # Access: http://localhost:9090/graph
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: niyanta_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # Grafana (Visualization & Dashboards)
+  # Status: ✅ Observability
+  # Purpose: Create dashboards for metrics & logs
+  # Access: http://localhost:3000 (admin/admin)
+  # ==========================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: niyanta_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+      GF_INSTALL_PLUGINS: "grafana-piechart-panel"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # Loki (Log Aggregation)
+  # Status: ✅ Observability
+  # Purpose: Centralized log storage and querying
+  # Access: Via Grafana (datasource)
+  # ==========================================
+  loki:
+    image: grafana/loki:latest
+    container_name: niyanta_loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # Promtail (Log Shipper)
+  # Status: ✅ Observability
+  # Purpose: Send Docker container logs to Loki
+  # ==========================================
+  promtail:
+    image: grafana/promtail:latest
+    container_name: niyanta_promtail
+    volumes:
+      - ./config/promtail-config.yml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - backend-network
+
+  # ==========================================
+  # Redis Exporter (Metrics for Redis)
+  # Status: ✅ Observability
+  # Purpose: Export Redis metrics to Prometheus
+  # ==========================================
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: niyanta_redis_exporter
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  backend-network:
+    driver: bridge
+
+# ==========================================
+# Volumes (Persistent Data)
+# ==========================================
+volumes:
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+  # neo4j-data:
+  #   driver: local
+  # neo4j-logs:
+  #   driver: local
+  # chromadb-data:
+  #   driver: local

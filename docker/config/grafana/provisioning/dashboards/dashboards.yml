@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'niyanta'
+    orgId: 1
+    folder: 'Niyanta'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

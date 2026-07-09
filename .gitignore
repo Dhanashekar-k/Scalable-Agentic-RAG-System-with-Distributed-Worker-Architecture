@@ -1,0 +1,107 @@
+interview_prep/
+
+# ==========================================
+# ENVIRONMENT & SECRET VARIABLES
+# ⚠️  NEVER commit .env files with real credentials
+# ==========================================
+.env
+.env.local
+.env.*.local
+docker/.env
+backend/.env
+frontend/.env
+k8s/secrets.yaml
+k8s/*-secrets.yaml
+
+# ==========================================
+# API Keys & Credentials (NEVER COMMIT)
+# ==========================================
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+.secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Frontend builds
+frontend/dist/
+frontend/build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+backend/tests/
+# Excluded from public repo (added during GitHub setup)
+NIYANTA_CONTEXT.md
+*.sqlite3
+docker/backend/data/
+
+# Internal dev scratchpads excluded from public repo
+docs/troubleshooting/
+docs/architecture/
+docs/guides/SESSION_SUMMARY.md
+docs/deployment/SERVICES_RUNNING.md
+docs/deployment/SYSTEM_STARTUP_REPORT.md
+docs/DOCUMENTATION_INDEX.md
+docker/MARCH_10_UPDATES.md
+docker/DOCKER_QUICK_REFERENCE.txt
+docker/MONITORING_SETUP_SUMMARY.md
+docker/DOCKER_SETUP_SUMMARY.md
+backend/docs/STATUS_REPORT.py

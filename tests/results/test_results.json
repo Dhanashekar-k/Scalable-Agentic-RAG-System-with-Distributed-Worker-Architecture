@@ -1,0 +1,77 @@
+{
+  "baseline_performance": {
+    "name": "Baseline Performance",
+    "workers": 3,
+    "total_requests": 20,
+    "successful_requests": 6,
+    "failed_requests": 14,
+    "error_rate": 70.0,
+    "throughput_rps": 40.31143468127538,
+    "latency": {
+      "min_ms": 51.53989791870117,
+      "max_ms": 982.0761680603027,
+      "avg_ms": 365.8796548843384,
+      "p50_ms": 291.29791259765625,
+      "p95_ms": 1277.8470396995544,
+      "p99_ms": 0
+    },
+    "status": "WARN"
+  },
+  "cache_effectiveness": {
+    "name": "Cache Effectiveness",
+    "total_queries": 100,
+    "cache_hits_reported": 4,
+    "hit_rate_percent": 4.0,
+    "cached_response_p95_ms": 0,
+    "non_cached_response_p95_ms": 219.5867419242859,
+    "speedup_factor": 0,
+    "status": "WARN"
+  },
+  "race_conditions": {
+    "name": "Race Condition Fixes",
+    "concurrent_requests": 500,
+    "expected_total": 500,
+    "actual_total": 500,
+    "updates_lost": 0,
+    "delta": 0,
+    "loss_percent": 0,
+    "status": "PASS"
+  },
+  "multi_user_isolation": {
+    "name": "Multi-User Isolation",
+    "total_users": 10,
+    "queries_per_user": 20,
+    "total_queries": 200,
+    "successful_queries": 3,
+    "failed_queries": 197,
+    "users_isolated": 9,
+    "status": "FAIL"
+  },
+  "scaling_performance": {
+    "name": "Horizontal Scaling",
+    "scaling_results": [
+      {
+        "workers": 1,
+        "throughput_rps": 2.5915941249260435,
+        "avg_latency_ms": 0
+      },
+      {
+        "workers": 3,
+        "throughput_rps": 2.9210351993180845,
+        "avg_latency_ms": 784.7231924533844
+      },
+      {
+        "workers": 5,
+        "throughput_rps": 3.0930427301163284,
+        "avg_latency_ms": 5278.305292129517
+      },
+      {
+        "workers": 10,
+        "throughput_rps": 3.3254447618566623,
+        "avg_latency_ms": 8322.064509758582
+      }
+    ],
+    "scaling_efficiency": 0.12831657279480677,
+    "status": "PASS"
+  }
+}

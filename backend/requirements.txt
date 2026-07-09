@@ -1,0 +1,40 @@
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.10.6
+pydantic-settings==2.7.1
+
+# AI & RAG
+langchain==0.3.13
+langchain-groq==0.2.1
+langchain-core==0.3.28
+langgraph==0.2.62
+sentence-transformers==2.3.1
+groq==0.13.0
+
+# Vector & Graph Databases
+chromadb==0.4.22
+neo4j==5.16.0
+
+# Cache & Message Queue
+redis==5.0.8
+aio-pika==9.4.0
+
+# Monitoring & Observability
+prometheus-client==0.20.0
+
+# Utilities
+python-dotenv==1.0.0
+httpx==0.26.0
+numpy==1.26.3
+scikit-learn==1.4.0
+
+# Ingestion Dependencies
+youtube-transcript-api>=0.6.2
+feedparser>=6.0.10
+pymupdf>=1.23.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Hybrid Search & Re-ranking
+rank-bm25>=0.2.2

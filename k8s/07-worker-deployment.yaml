@@ -1,0 +1,60 @@
+---
+# Worker Deployment (horizontally scalable)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: niyanta
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      affinity:
+        # Try to spread workers across different nodes
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - worker
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: worker
+        image: docker.io/library/docker-backend:latest
+        imagePullPolicy: IfNotPresent
+        command: ["python", "worker_main.py"]
+        env:
+        - name: WORKER_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        envFrom:
+        - configMapRef:
+            name: niyanta-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+      terminationGracePeriodSeconds: 30

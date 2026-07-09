@@ -1,0 +1,42 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# This enables hot-reload and debug mode for local development
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      # Use normal build, not multi-stage
+    volumes:
+      - ../backend:/app  # Mount source code for hot reload
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    # No special build configuration
+    volumes:
+      - ../backend:/app  # Mount source code for hot reload
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    # worker runs worker_main.py which doesn't support reload
+
+  # Optional: Frontend development (npm run dev)
+  # frontend:
+  #   build:
+  #     context: ../frontend
+  #     # Normal build, will install deps
+  #   volumes:
+  #     - ../frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - VITE_API_URL=http://localhost:8000
+  #   command: npm run dev -- --host 0.0.0.0
+  #   ports:
+  #     - "5173:5173"  # Vite dev server port
+  # Note: Run frontend separately with: cd frontend && npm install && npm run dev

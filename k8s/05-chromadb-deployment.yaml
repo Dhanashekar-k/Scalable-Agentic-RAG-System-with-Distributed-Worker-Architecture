@@ -1,0 +1,67 @@
+---
+# ChromaDB Service for vector database
+apiVersion: v1
+kind: Service
+metadata:
+  name: chromadb
+  namespace: niyanta
+spec:
+  selector:
+    app: chromadb
+  ports:
+    - port: 8001
+      targetPort: 8001
+  type: ClusterIP
+
+---
+# ChromaDB Deployment for vector embeddings
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chromadb
+  namespace: niyanta
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chromadb
+  template:
+    metadata:
+      labels:
+        app: chromadb
+    spec:
+      containers:
+      - name: chromadb
+        image: chromadb/chroma:latest
+        ports:
+        - containerPort: 8001
+        env:
+        - name: CHROMA_DB_IMPL
+          value: "duckdb"
+        - name: PERSIST_DIRECTORY
+          value: "/chroma/data"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /api/version
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/version
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        volumeMounts:
+        - name: data
+          mountPath: /chroma/data
+      volumes:
+      - name: data
+        emptyDir: {}
